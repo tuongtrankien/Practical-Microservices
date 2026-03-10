@@ -14,13 +14,13 @@ public static class DependencyInjection
     {
         // Add DbContext
         services.AddDbContext<ProductDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("ProductServiceDb")));
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
         // Register repositories
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Configure MassTransit with RabbitMQ
+        // Configure MassTransit with RabbitMQ for event publishing
         services.AddMassTransit(x =>
         {
             x.UsingRabbitMq((context, cfg) =>
@@ -31,7 +31,7 @@ public static class DependencyInjection
                     h.Password(configuration["RabbitMQ:Password"] ?? "guest");
                 });
 
-                cfg.ConfigureEndpoints(context);
+                // No consumers - ProductService only publishes events
             });
         });
 

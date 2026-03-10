@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using PaymentService.Application;
 using PaymentService.Infrastructure;
 
@@ -15,6 +16,13 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Apply migrations automatically
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<PaymentService.Infrastructure.Data.PaymentDbContext>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

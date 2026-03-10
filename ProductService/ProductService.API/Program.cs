@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using ProductService.Application;
 using ProductService.Infrastructure;
+using ProductService.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,13 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Apply migrations automatically on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ProductDbContext>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="MassTransit.RabbitMQ" Version="9.0.1" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
   </ItemGroup>
 
   <PropertyGroup>

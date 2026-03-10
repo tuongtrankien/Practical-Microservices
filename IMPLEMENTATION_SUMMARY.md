@@ -152,7 +152,7 @@ PaymentService ◄──[OrderConfirmedEvent]── OrderService
 | **Entity Framework Core** | 8.0.11 | ORM (except NotificationService) |
 | **SQL Server LocalDB** | - | Database |
 | **MediatR** | 9.0.1 | CQRS Pattern |
-| **MassTransit** | 9.0.1 | Event-Driven Messaging |
+| **MassTransit** | 8.2.5 | Event-Driven Messaging |
 | **RabbitMQ** | - | Message Broker |
 | **BCrypt.Net-Next** | 4.1.0 | Password Hashing (UserService) |
 | **FluentValidation** | 11.9.0 | Input Validation (installed) |

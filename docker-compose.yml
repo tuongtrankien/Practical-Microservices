@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # UserService - Port 5001
+  userservice:
+    build:
+      context: ./UserService
+      dockerfile: Dockerfile
+    container_name: userservice
+    ports:
+      - "5001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=UserServiceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # ProductService - Port 5002
+  productservice:
+    build:
+      context: ./ProductService
+      dockerfile: Dockerfile
+    container_name: productservice
+    ports:
+      - "5002:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=ProductServiceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - RabbitMQ__Host=host.docker.internal
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    depends_on:
+      - userservice
+
+  # OrderService - Port 5003
+  orderservice:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile
+    container_name: orderservice
+    ports:
+      - "5003:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__OrderServiceDb=Server=host.docker.internal,1433;Database=OrderServiceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - RabbitMQ__Host=host.docker.internal
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    depends_on:
+      - productservice
+
+  # PaymentService - Port 5004
+  paymentservice:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    container_name: paymentservice
+    ports:
+      - "5004:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__PaymentServiceDb=Server=host.docker.internal,1433;Database=PaymentServiceDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - RabbitMQ__Host=host.docker.internal
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    depends_on:
+      - orderservice
+
+  # NotificationService - Port 5005
+  notificationservice:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    container_name: notificationservice
+    ports:
+      - "5005:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - RabbitMQ__Host=host.docker.internal
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    depends_on:
+      - paymentservice
+
+  # OrchestratorService - Port 5006
+  orchestratorservice:
+    build:
+      context: ./OrchestratorService
+      dockerfile: Dockerfile
+    container_name: orchestratorservice
+    ports:
+      - "5006:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - RabbitMQ__Host=host.docker.internal
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    depends_on:
+      - notificationservice
+
+networks:
+  microservices-network:
+    driver: bridge
