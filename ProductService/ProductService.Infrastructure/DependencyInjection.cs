@@ -35,6 +35,8 @@ public static class DependencyInjection
                     h.Password(configuration["RabbitMQ:Password"] ?? "guest");
                 });
 
+                // No need for SetEntityName - shared contracts handle message routing automatically
+
                 cfg.ConfigureEndpoints(context);
             });
         });

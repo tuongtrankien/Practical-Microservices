@@ -1,10 +1,11 @@
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using OrchestratorService.Infrastructure.Events;
+using Shared.Contracts;
 
 namespace OrchestratorService.Infrastructure.Consumers;
 
-public class PaymentFailedConsumer : IConsumer<PaymentFailedEventForOrchestrator>
+public class PaymentFailedConsumer : IConsumer<IPaymentFailedEvent>
 {
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<PaymentFailedConsumer> _logger;
@@ -17,7 +18,7 @@ public class PaymentFailedConsumer : IConsumer<PaymentFailedEventForOrchestrator
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<PaymentFailedEventForOrchestrator> context)
+    public async Task Consume(ConsumeContext<IPaymentFailedEvent> context)
     {
         var message = context.Message;
         _logger.LogWarning("⚠️ [ORCHESTRATOR] PaymentFailedEvent received for Order {OrderId}, Reason: {Reason}",
@@ -25,12 +26,14 @@ public class PaymentFailedConsumer : IConsumer<PaymentFailedEventForOrchestrator
 
         try
         {
-            // Orchestrator Compensation Step 1: Payment failed, cancel the order immediately
-            await _publishEndpoint.Publish(new OrderCancelledEvent(
-                message.OrderId,
-                DateTime.UtcNow,
-                $"Payment failed: {message.Reason}"),
-                context.CancellationToken);
+            // Orchestrator Compensation Step 1: Payment failed, cancel the order immediately using shared contract
+            await _publishEndpoint.Publish<IOrderCancelledEvent>(new
+            {
+                OrderId = message.OrderId,
+                Reason = $"Payment failed: {message.Reason}",
+                CancelledDate = DateTime.UtcNow
+            },
+            context.CancellationToken);
 
             _logger.LogInformation("📤 Published OrderCancelledEvent for Order {OrderId}", message.OrderId);
             _logger.LogInformation("❌ [SAGA COMPENSATION] Order {OrderId} cancelled due to payment failure", message.OrderId);

@@ -1,10 +1,11 @@
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using OrchestratorService.Infrastructure.Events;
+using Shared.Contracts;
 
 namespace OrchestratorService.Infrastructure.Consumers;
 
-public class StockReservationFailedConsumer : IConsumer<StockReservationFailedEvent>
+public class StockReservationFailedConsumer : IConsumer<IStockReservationFailedEvent>
 {
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<StockReservationFailedConsumer> _logger;
@@ -17,7 +18,7 @@ public class StockReservationFailedConsumer : IConsumer<StockReservationFailedEv
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<StockReservationFailedEvent> context)
+    public async Task Consume(ConsumeContext<IStockReservationFailedEvent> context)
     {
         var message = context.Message;
         _logger.LogWarning("⚠️ [ORCHESTRATOR] StockReservationFailedEvent received for Order {OrderId}, Product {ProductId}, Reason: {Reason}",
@@ -25,24 +26,25 @@ public class StockReservationFailedConsumer : IConsumer<StockReservationFailedEv
 
         try
         {
-            // Orchestrator Compensation Step 2: Stock reservation failed, need to refund payment
-            // Note: In stateless saga, we don't have PaymentId stored
-            // PaymentService should look up payment by OrderId for refund
-            await _publishEndpoint.Publish(new RefundRequestedEvent(
-                message.OrderId,
-                Guid.Empty, // PaymentService will look up by OrderId
-                0, // PaymentService will look up amount by OrderId
-                DateTime.UtcNow),
-                context.CancellationToken);
+            // Orchestrator Compensation Step 2: Stock reservation failed, need to refund payment using shared contract
+            await _publishEndpoint.Publish<IRefundRequestedEvent>(new
+            {
+                OrderId = message.OrderId,
+                Reason = $"Stock reservation failed: {message.Reason}",
+                RequestedDate = DateTime.UtcNow
+            },
+            context.CancellationToken);
 
             _logger.LogInformation("📤 Published RefundRequestedEvent for Order {OrderId}", message.OrderId);
 
-            // After requesting refund, cancel the order
-            await _publishEndpoint.Publish(new OrderCancelledEvent(
-                message.OrderId,
-                DateTime.UtcNow,
-                $"Stock unavailable: {message.Reason}"),
-                context.CancellationToken);
+            // After requesting refund, cancel the order using shared contract
+            await _publishEndpoint.Publish<IOrderCancelledEvent>(new
+            {
+                OrderId = message.OrderId,
+                Reason = $"Stock unavailable: {message.Reason}",
+                CancelledDate = DateTime.UtcNow
+            },
+            context.CancellationToken);
 
             _logger.LogInformation("📤 Published OrderCancelledEvent for Order {OrderId}", message.OrderId);
             _logger.LogInformation("❌ [SAGA COMPENSATION] Order {OrderId} cancelled due to stock failure, refund requested", message.OrderId);

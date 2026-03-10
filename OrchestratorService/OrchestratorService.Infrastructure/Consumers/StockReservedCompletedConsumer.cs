@@ -1,10 +1,11 @@
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using OrchestratorService.Infrastructure.Events;
+using Shared.Contracts;
 
 namespace OrchestratorService.Infrastructure.Consumers;
 
-public class StockReservedCompletedConsumer : IConsumer<StockReservedCompletedEvent>
+public class StockReservedCompletedConsumer : IConsumer<IStockReservedCompletedEvent>
 {
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<StockReservedCompletedConsumer> _logger;
@@ -17,7 +18,7 @@ public class StockReservedCompletedConsumer : IConsumer<StockReservedCompletedEv
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<StockReservedCompletedEvent> context)
+    public async Task Consume(ConsumeContext<IStockReservedCompletedEvent> context)
     {
         var message = context.Message;
         _logger.LogInformation("✅ [ORCHESTRATOR] StockReservedCompletedEvent received for Order {OrderId}, Product {ProductId}",
@@ -25,11 +26,13 @@ public class StockReservedCompletedConsumer : IConsumer<StockReservedCompletedEv
 
         try
         {
-            // Orchestrator Step 3: Stock reserved successfully, confirm the order
-            await _publishEndpoint.Publish(new OrderConfirmedEvent(
-                message.OrderId,
-                DateTime.UtcNow),
-                context.CancellationToken);
+            // Orchestrator Step 3: Stock reserved successfully, confirm the order using shared contract
+            await _publishEndpoint.Publish<IOrderConfirmedEvent>(new
+            {
+                OrderId = message.OrderId,
+                ConfirmedDate = DateTime.UtcNow
+            },
+            context.CancellationToken);
 
             _logger.LogInformation("📤 Published OrderConfirmedEvent for Order {OrderId}", message.OrderId);
             _logger.LogInformation("🎉 [SAGA SUCCESS] Order {OrderId} flow completed successfully", message.OrderId);

@@ -22,8 +22,8 @@ services:
   # ProductService - Port 5002
   productservice:
     build:
-      context: ./ProductService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./ProductService/Dockerfile
     container_name: productservice
     ports:
       - "5002:80"
@@ -45,8 +45,8 @@ services:
   # OrderService - Port 5003
   orderservice:
     build:
-      context: ./OrderService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./OrderService/Dockerfile
     container_name: orderservice
     ports:
       - "5003:80"
@@ -68,8 +68,8 @@ services:
   # PaymentService - Port 5004
   paymentservice:
     build:
-      context: ./PaymentService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./PaymentService/Dockerfile
     container_name: paymentservice
     ports:
       - "5004:80"
@@ -113,8 +113,8 @@ services:
   # OrchestratorService - Port 5006
   orchestratorservice:
     build:
-      context: ./OrchestratorService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./OrchestratorService/Dockerfile
     container_name: orchestratorservice
     ports:
       - "5006:80"

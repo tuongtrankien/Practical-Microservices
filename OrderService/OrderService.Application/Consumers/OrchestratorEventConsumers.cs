@@ -2,13 +2,14 @@ using MassTransit;
 using Microsoft.Extensions.Logging;
 using OrderService.Application.Interfaces;
 using OrderService.Domain.Events;
+using Shared.Contracts;
 
 namespace OrderService.Application.Consumers;
 
 /// <summary>
 /// Consumes OrderConfirmedEvent from OrchestratorService after successful saga completion
 /// </summary>
-public class OrchestratorOrderConfirmedConsumer : IConsumer<OrderConfirmedEventFromOrchestrator>
+public class OrchestratorOrderConfirmedConsumer : IConsumer<IOrderConfirmedEvent>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -27,7 +28,7 @@ public class OrchestratorOrderConfirmedConsumer : IConsumer<OrderConfirmedEventF
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<OrderConfirmedEventFromOrchestrator> context)
+    public async Task Consume(ConsumeContext<IOrderConfirmedEvent> context)
     {
         var message = context.Message;
         _logger.LogInformation("✅ [SAGA SUCCESS] Order confirmed from Orchestrator: {OrderId}", message.OrderId);
@@ -67,7 +68,7 @@ public class OrchestratorOrderConfirmedConsumer : IConsumer<OrderConfirmedEventF
 /// <summary>
 /// Consumes OrderCancelledEvent from OrchestratorService after saga failure/compensation
 /// </summary>
-public class OrchestratorOrderCancelledConsumer : IConsumer<OrderCancelledEventFromOrchestrator>
+public class OrchestratorOrderCancelledConsumer : IConsumer<IOrderCancelledEvent>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -86,7 +87,7 @@ public class OrchestratorOrderCancelledConsumer : IConsumer<OrderCancelledEventF
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<OrderCancelledEventFromOrchestrator> context)
+    public async Task Consume(ConsumeContext<IOrderCancelledEvent> context)
     {
         var message = context.Message;
         _logger.LogWarning("❌ [SAGA FAILED] Order cancelled from Orchestrator: {OrderId}, Reason: {Reason}",

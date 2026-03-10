@@ -28,6 +28,8 @@ public static class DependencyInjection
                     h.Password(rabbitMqConfig["Password"]!);
                 });
 
+                // No need for SetEntityName - shared contracts handle message routing automatically
+
                 // Configure endpoints for consumers
                 cfg.ReceiveEndpoint("orchestrator-order-placed-queue", e =>
                 {

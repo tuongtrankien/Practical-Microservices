@@ -3,13 +3,14 @@ using Microsoft.Extensions.Logging;
 using PaymentService.Application.Interfaces;
 using PaymentService.Domain.Entities;
 using PaymentService.Domain.Events;
+using Shared.Contracts;
 
 namespace PaymentService.Application.Consumers;
 
 /// <summary>
 /// Consumes PaymentRequestedEvent from OrchestratorService and processes payment
 /// </summary>
-public class PaymentRequestedConsumer : IConsumer<PaymentRequestedEvent>
+public class PaymentRequestedConsumer : IConsumer<IPaymentRequestedEvent>
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -28,7 +29,7 @@ public class PaymentRequestedConsumer : IConsumer<PaymentRequestedEvent>
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<PaymentRequestedEvent> context)
+    public async Task Consume(ConsumeContext<IPaymentRequestedEvent> context)
     {
         var message = context.Message;
         _logger.LogInformation("💳 Payment requested for Order {OrderId}, Amount: {Amount}", 
@@ -67,14 +68,16 @@ public class PaymentRequestedConsumer : IConsumer<PaymentRequestedEvent>
                 await _paymentRepository.UpdateAsync(payment, context.CancellationToken);
                 await _unitOfWork.SaveChangesAsync(context.CancellationToken);
 
-                // Publish PaymentSucceededEvent to Orchestrator
-                await _publishEndpoint.Publish(new PaymentSucceededEvent(
-                    message.OrderId,
-                    payment.Id,
-                    payment.Amount,
-                    message.Items,
-                    DateTime.UtcNow),
-                    context.CancellationToken);
+                // Publish IPaymentSucceededEvent to Orchestrator (using shared contract)
+                await _publishEndpoint.Publish<IPaymentSucceededEvent>(new
+                {
+                    OrderId = message.OrderId,
+                    PaymentId = payment.Id,
+                    Amount = payment.Amount,
+                    Items = message.Items.ToList<object>(), // Forward items from request for stock reservation
+                    ProcessedDate = DateTime.UtcNow
+                },
+                context.CancellationToken);
 
                 _logger.LogInformation("✅ Payment succeeded for Order {OrderId}, PaymentId: {PaymentId}", 
                     message.OrderId, payment.Id);
@@ -87,12 +90,14 @@ public class PaymentRequestedConsumer : IConsumer<PaymentRequestedEvent>
                 await _paymentRepository.UpdateAsync(payment, context.CancellationToken);
                 await _unitOfWork.SaveChangesAsync(context.CancellationToken);
 
-                // Publish PaymentFailedEventForOrchestrator to Orchestrator (Note: different structure than legacy event)
-                await _publishEndpoint.Publish(new PaymentFailedEventForOrchestrator(
-                    message.OrderId,
-                    reason,
-                    DateTime.UtcNow),
-                    context.CancellationToken);
+                // Publish IPaymentFailedEvent to Orchestrator (using shared contract)
+                await _publishEndpoint.Publish<IPaymentFailedEvent>(new
+                {
+                    OrderId = message.OrderId,
+                    Reason = reason,
+                    FailedDate = DateTime.UtcNow
+                },
+                context.CancellationToken);
 
                 // Publish legacy PaymentFailedEvent for NotificationService
                 await _publishEndpoint.Publish(new PaymentFailedEvent(
@@ -121,12 +126,14 @@ public class PaymentRequestedConsumer : IConsumer<PaymentRequestedEvent>
         {
             _logger.LogError(ex, "Error processing payment request for Order {OrderId}", message.OrderId);
             
-            // Publish failure events
-            await _publishEndpoint.Publish(new PaymentFailedEventForOrchestrator(
-                message.OrderId,
-                $"Payment processing error: {ex.Message}",
-                DateTime.UtcNow),
-                context.CancellationToken);
+            // Publish failure event using shared contract
+            await _publishEndpoint.Publish<IPaymentFailedEvent>(new
+            {
+                OrderId = message.OrderId,
+                Reason = $"Payment processing error: {ex.Message}",
+                FailedDate = DateTime.UtcNow
+            },
+            context.CancellationToken);
             
             throw;
         }
@@ -136,7 +143,7 @@ public class PaymentRequestedConsumer : IConsumer<PaymentRequestedEvent>
 /// <summary>
 /// Consumes RefundRequestedEvent from OrchestratorService and processes refund
 /// </summary>
-public class RefundRequestedConsumer : IConsumer<RefundRequestedEvent>
+public class RefundRequestedConsumer : IConsumer<IRefundRequestedEvent>
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -155,7 +162,7 @@ public class RefundRequestedConsumer : IConsumer<RefundRequestedEvent>
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<RefundRequestedEvent> context)
+    public async Task Consume(ConsumeContext<IRefundRequestedEvent> context)
     {
         var message = context.Message;
         _logger.LogInformation("🔄 Refund requested for Order {OrderId}", message.OrderId);

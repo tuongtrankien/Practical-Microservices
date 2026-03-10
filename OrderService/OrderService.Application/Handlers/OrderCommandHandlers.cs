@@ -5,6 +5,7 @@ using OrderService.Application.DTOs;
 using OrderService.Application.Interfaces;
 using OrderService.Domain.Entities;
 using OrderService.Domain.Events;
+using Shared.Contracts;
 
 namespace OrderService.Application.Handlers;
 
@@ -44,18 +45,21 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ord
             order.OrderDate),
             cancellationToken);
 
-        // Publish OrderPlacedEvent for OrchestratorService to start saga
-        await _publishEndpoint.Publish(new OrderPlacedEvent(
-            order.Id,
-            order.UserId,
-            order.TotalAmount,
-            order.OrderItems.Select(i => new OrderItemInfo(
-                i.ProductId,
-                i.ProductName,
-                i.Quantity,
-                i.UnitPrice)).ToList(),
-            order.OrderDate),
-            cancellationToken);
+        // Publish IOrderPlacedEvent for OrchestratorService to start saga (using shared contract)
+        await _publishEndpoint.Publish<IOrderPlacedEvent>(new
+        {
+            OrderId = order.Id,
+            UserId = order.UserId,
+            TotalAmount = order.TotalAmount,
+            Items = order.OrderItems.Select(i => new
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                Price = i.UnitPrice
+            }).ToList<object>(),
+            PlacedDate = order.OrderDate
+        },
+        cancellationToken);
 
         return MapToDto(order);
     }

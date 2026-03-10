@@ -6,13 +6,18 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["OrchestratorService.API/OrchestratorService.API.csproj", "OrchestratorService.API/"]
-COPY ["OrchestratorService.Application/OrchestratorService.Application.csproj", "OrchestratorService.Application/"]
-COPY ["OrchestratorService.Infrastructure/OrchestratorService.Infrastructure.csproj", "OrchestratorService.Infrastructure/"]
-COPY ["OrchestratorService.Domain/OrchestratorService.Domain.csproj", "OrchestratorService.Domain/"]
-RUN dotnet restore "OrchestratorService.API/OrchestratorService.API.csproj"
-COPY . .
-WORKDIR "/src/OrchestratorService.API"
+# Copy Shared.Contracts
+COPY ["Shared.Contracts/Shared.Contracts.csproj", "Shared.Contracts/"]
+# Copy OrchestratorService projects
+COPY ["OrchestratorService/OrchestratorService.API/OrchestratorService.API.csproj", "OrchestratorService/OrchestratorService.API/"]
+COPY ["OrchestratorService/OrchestratorService.Application/OrchestratorService.Application.csproj", "OrchestratorService/OrchestratorService.Application/"]
+COPY ["OrchestratorService/OrchestratorService.Infrastructure/OrchestratorService.Infrastructure.csproj", "OrchestratorService/OrchestratorService.Infrastructure/"]
+COPY ["OrchestratorService/OrchestratorService.Domain/OrchestratorService.Domain.csproj", "OrchestratorService/OrchestratorService.Domain/"]
+RUN dotnet restore "OrchestratorService/OrchestratorService.API/OrchestratorService.API.csproj"
+# Copy source files
+COPY Shared.Contracts/. Shared.Contracts/
+COPY OrchestratorService/. OrchestratorService/
+WORKDIR "/src/OrchestratorService/OrchestratorService.API"
 RUN dotnet build "OrchestratorService.API.csproj" -c Release -o /app/build
 
 FROM build AS publish
